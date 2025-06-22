@@ -2,7 +2,7 @@ version: '3'
 
 services:
   source_postgres:
-    image: postgres:9.2
+    image: postgres:13
     ports:
       - '5433:5432'
     networks:
@@ -15,7 +15,7 @@ services:
       - ./source_db_init/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   destination_postgres:
-    image: postgres:9.2
+    image: postgres:13
     ports:
       - '5434:5432'
     networks:
@@ -35,7 +35,30 @@ services:
     depends_on:
       - source_postgres
       - destination_postgres
+  dbt:
+    image: ghcr.io/dbt-labs/dbt-postgres:1.4.7
+    command: 
+      [
+        "run",
+        "--profiles-dir",
+        "/root",
+        "--project-dir",
+        "/dbt"
+      ]
+    networks:
+      - elt_network
+    volumes:
+      - ./custom_postgres:/dbt
+      - ~/.dbt:/root
+    depends_on:
+      elt_script: 
+        condition : service_completed_successfully
+      
+    environment:
+      DBT_PROFILE: default
+      DBT_TARGET: dev
 
 networks:
   elt_network:
     driver: bridge
+
